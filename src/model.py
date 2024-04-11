@@ -29,6 +29,13 @@ class MLPdynamics(torch.nn.Module):
         )
     
     def forward(self, x):
+        """
+        Input:
+            x: [Batch_size, history_len, state_dim + act_dim]
+        Output:
+            next_state: [Batch_size, state_dim] 
+        """
+        x = x.flatten(start_dim=1)
         return self.net(x)
 
     def parameter_num(self):
@@ -52,13 +59,19 @@ class Transformerdynamics(torch.nn.Module):
         encoder_layer = nn.TransformerEncoderLayer(d_model=input_dim, 
                                                    nhead=4,
                                                    dim_feedforward=hidden_dim)
-        transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        output_layer = nn.Sequential(
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.output_layer = nn.Sequential(
             nn.flatten(),
             nn.Linear(hidden_dim * history_len, state_dim)
         )
 
     def forward(self, x):
+        """
+        Input:
+            x: [Batch_size, history_len, state_dim + act_dim]
+        Output:
+            next_state: [Batch_size, state_dim] 
+        """
         embedded = self.transformer(x)
         return self.output_layer(embedded)
 

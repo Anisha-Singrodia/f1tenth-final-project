@@ -1,0 +1,16 @@
+name: 'mlp'
+hidden_size: 128
+state_dim: 4
+action_dim: 2
+history_len: 10
+
+lr: 1e-3
+lr_scheduler: 'StepLR'
+lr_step_size: 10
+lr_gamma: 0.5
+
+batch_size: 64
+num_epochs: 20
+
+pinn: False
+pinn_lambda: 1.0
