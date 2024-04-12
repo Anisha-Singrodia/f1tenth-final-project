@@ -58,12 +58,14 @@ class Transformerdynamics(torch.nn.Module):
 
         input_dim = (state_dim + act_dim)
 
-        encoder_layer = nn.TransformerEncoderLayer(d_model=input_dim, 
+
+        self.input_encoder = nn.Linear(input_dim, hidden_dim)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, 
                                                    nhead=nhead,
                                                    dim_feedforward=hidden_dim)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.output_layer = nn.Sequential(
-            nn.flatten(),
+            nn.Flatten(),
             nn.Linear(hidden_dim * history_len, state_dim)
         )
 
@@ -75,6 +77,7 @@ class Transformerdynamics(torch.nn.Module):
             next_state: [Batch_size, state_dim] 
         """
         x = torch.cat([state, action], dim=-1)
+        x = self.input_encoder(x)
         embedded = self.transformer(x)
         return self.output_layer(embedded)
 
