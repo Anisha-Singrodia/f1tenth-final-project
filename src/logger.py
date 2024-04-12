@@ -6,7 +6,8 @@ import numpy as np
 import torch
 import torchvision
 from termcolor import colored
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
+from tensorboardX import SummaryWriter
 import wandb
 
 COMMON_TRAIN_FORMAT = [('frame', 'F', 'int'), ('step', 'S', 'int'),
@@ -123,7 +124,7 @@ class MetersGroup(object):
 
 
 class Logger(object):
-	def __init__(self, project_name, log_dir, use_tb, use_wandb=False, group_name=None):
+	def __init__(self, project_name, log_dir, cfg, use_tb=True, use_wandb=False, group_name=None):
 		self._log_dir = log_dir
 		self._train_mg = MetersGroup(log_dir / 'train.csv',
 									 formating=COMMON_TRAIN_FORMAT, dump_csv=False)
@@ -141,7 +142,7 @@ class Logger(object):
 				exp_group = exp_group[:-7]
 			else:
 				exp_group = group_name
-			self.wandb_writer = wandb.init(project=project_name, group=exp_group, name=exp_name)
+			self.wandb_writer = wandb.init(project=project_name, config=cfg, group=exp_group, name=exp_name)
 		else:
 			self.wandb_writer = None
 

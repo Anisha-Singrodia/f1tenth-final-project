@@ -1,8 +1,9 @@
+# @package model
 name: 'mlp'
-hidden_size: 128
-state_dim: 4
+state_dim: 5
 action_dim: 2
 history_len: 10
+hidden_dim: 128
 
 lr: 1e-3
 lr_scheduler: 'StepLR'

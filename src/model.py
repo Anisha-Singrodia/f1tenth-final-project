@@ -28,13 +28,14 @@ class MLPdynamics(torch.nn.Module):
             torch.nn.Linear(hidden_dim, state_dim)
         )
     
-    def forward(self, x):
+    def forward(self, state, action):
         """
         Input:
             x: [Batch_size, history_len, state_dim + act_dim]
         Output:
             next_state: [Batch_size, state_dim] 
         """
+        x = torch.cat([state, action], dim=-1)
         x = x.flatten(start_dim=1)
         return self.net(x)
 

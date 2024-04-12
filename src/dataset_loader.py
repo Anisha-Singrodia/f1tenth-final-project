@@ -12,11 +12,17 @@ Data look like as follows:
 """
 
 class F1TENTH_Dataset(torch.utils.data.Dataset):
-    def __init__(self, data_path_file, history_len=10):
+    def __init__(self, 
+                    root_dir, 
+                    data_path_file, 
+                    state_dim=5, 
+                    act_dim=2, 
+                    history_len=10):        
+        self.root_dir = root_dir
         self.history_len = history_len
-        self.state_dim = 5
-        self.act_dim = 2
-        self.data = self.read_data(data_path_file)
+        self.state_dim = state_dim
+        self.act_dim = act_dim
+        self.data = self.read_data(os.path.join(root_dir, data_path_file))
 
     def read_data(self, data_path_file):
         # data_path_file is the txt file that contains the path to the csv file
@@ -28,6 +34,7 @@ class F1TENTH_Dataset(torch.utils.data.Dataset):
         with open(data_path_file, 'r') as f:
             for i, line in enumerate(f):
                 line = line.strip()
+                line = os.path.join(self.root_dir, line)
                 data[i] = np.loadtxt(line, delimiter=',', skiprows=0).astype(np.float32)
 
         self.data_cum_idx_map = [len(d) - self.history_len for d in data.values()]
@@ -50,9 +57,9 @@ class F1TENTH_Dataset(torch.utils.data.Dataset):
 
         data = self.data[file_idx]
 
-        state = torch.tensor(data[idx:idx + self.history_len][:, :5], dtype=torch.float32)
-        action = torch.tensor(data[idx:idx + self.history_len][:, 5:], dtype=torch.float32)
-        next_state = torch.tensor(data[idx + self.history_len][:, :5], dtype=torch.float32)
+        state = torch.tensor(data[idx:idx + self.history_len][:, :self.state_dim], dtype=torch.float32)
+        action = torch.tensor(data[idx:idx + self.history_len][:, self.state_dim:], dtype=torch.float32)
+        next_state = torch.tensor(data[idx + self.history_len][:self.state_dim], dtype=torch.float32)
         return state, action, next_state
 
 class F1TENTH_DataLoader(torch.utils.data.DataLoader):
