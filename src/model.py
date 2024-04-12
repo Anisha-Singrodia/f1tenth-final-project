@@ -48,6 +48,7 @@ class Transformerdynamics(torch.nn.Module):
                  act_dim=2,
                  history_len=10,
                  hidden_dim=64, 
+                 nhead=4,
                  num_layers=4
                  ):
         super(Transformerdynamics, self).__init__()
@@ -58,7 +59,7 @@ class Transformerdynamics(torch.nn.Module):
         input_dim = (state_dim + act_dim)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=input_dim, 
-                                                   nhead=4,
+                                                   nhead=nhead,
                                                    dim_feedforward=hidden_dim)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.output_layer = nn.Sequential(
@@ -66,13 +67,14 @@ class Transformerdynamics(torch.nn.Module):
             nn.Linear(hidden_dim * history_len, state_dim)
         )
 
-    def forward(self, x):
+    def forward(self, state, action):
         """
         Input:
             x: [Batch_size, history_len, state_dim + act_dim]
         Output:
             next_state: [Batch_size, state_dim] 
         """
+        x = torch.cat([state, action], dim=-1)
         embedded = self.transformer(x)
         return self.output_layer(embedded)
 
