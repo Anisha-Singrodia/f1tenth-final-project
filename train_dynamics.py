@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import torch
+from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
@@ -31,12 +32,13 @@ class Workspace:
     def setup(self):
         # setup
         group_name = self.cfg.exp_prefix + '_' + self.cfg.model.name + '_' + self.cfg.exp_suffix
+        
         self.logger = Logger(project_name='f1tenth',
                             log_dir=self.work_dir, 
                             cfg=self.cfg,
-                             use_tb=self.cfg.use_tb, 
-                             use_wandb=self.cfg.use_wandb, 
-                             group_name=group_name)
+                            use_tb=self.cfg.use_tb, 
+                            use_wandb=self.cfg.use_wandb, 
+                            group_name=group_name)
 
         # dataset
         self.train_dataset = F1TENTH_Dataset(self.cfg.rootdir, 
@@ -58,7 +60,8 @@ class Workspace:
                                               shuffle=False,
                                               num_workers=self.cfg.num_workers)
 
-        # model
+
+
         if self.cfg.model.name == 'mlp':
             self.model = MLPdynamics(
                                         state_dim=self.cfg.model.state_dim,
@@ -90,9 +93,14 @@ class Workspace:
         state = state.to(self.device)
         action = action.to(self.device)
         next_state = next_state.to(self.device)
+        print(state.shape, action.shape, next_state.shape)
+        print(state[0], action[0], next_state[0])
 
         pred_next_state = self.model(state, action)
+        print(pred_next_state.shape)
+        print(pred_next_state[0])
         loss = nn.MSELoss()(pred_next_state, next_state)
+        print(loss.item())
 
         if self.cfg.model.pinn:
             physics_next_state = utils.single_track_dynamics(state[:, -1, :], action)
@@ -118,6 +126,8 @@ class Workspace:
             if epoch % self.cfg.eval_interval == 0:
                 self.evaluate()
 
+        torch.save(self.model.state_dict(), self.work_dir / 'model.pth')
+
     def evaluate(self):
         for eval_batch in self.eval_loader:
             self.model.eval()
@@ -132,9 +142,9 @@ class Workspace:
                 self.logger.log('eval/loss', loss.item(), self._global_step)
 
 
-@hydra.main(config_path='cfgs', config_name='config')
+@hydra.main(config_path='cfgs', config_name='config', version_base = "1.3.2")
 def main(cfg):
-    #from train_dynamics import Workspace as W
+    from train_dynamics import Workspace 
     root_dir = Path.cwd()
     workspace = Workspace(cfg)
     workspace.train()
