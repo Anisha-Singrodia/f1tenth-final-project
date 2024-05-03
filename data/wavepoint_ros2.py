@@ -13,7 +13,10 @@ from time import gmtime, strftime
 
 #file = open(strftime('~/rcws/logs/wp-%Y-%m-%d-%H-%M-%S',gmtime())+'.csv', 'w')
 file = open(strftime('./wp-%Y-%m-%d-%H-%M-%S',gmtime())+'.csv', 'w')
-file.write('%s, %s, %s, %s\n' % ("px", "py", "yaw", "speed"))
+file.write('%s, %s, %s, %s\n' % ("px", "py", "yaw", "odom_speed"))
+
+file1 = open(strftime('./wp-%Y-%m-%d-%H-%M-%S',gmtime())+'_drive.csv', 'w')
+file1.write('%s, %s\n' % ("st_angle", "drive_speed"))
 
 class WavePointCollector(Node):
     def __init__(self):
@@ -30,7 +33,7 @@ class WavePointCollector(Node):
         self.odom_subscriber = self.create_subscription(Odometry, odom_topic, self.odom_callback, 10)
         
         # self.scan_subscriber = self.create_subscription(LaserScan, lidarscan_topic, self.scan_callback, 10)
-        # self.drive_publisher = self.create_publisher(AckermannDriveStamped, drive_topic, 10)
+        self.drive_subscriber = self.create_subscription(AckermannDriveStamped, drive_topic, self.drive_callback, 10)
 
         # TODO: set PID gains
         self.kp = 1.5
@@ -66,6 +69,10 @@ class WavePointCollector(Node):
         yaw_z = math.atan2(t3, t4)
      
         return roll_x, pitch_y, yaw_z # in radians
+    
+    def drive_callback(self, data):
+	    file1.write('%f, %f\n' % (data.drive.steering_angle, data.drive.speed))
+    	
     
     def odom_callback(self, data):
         quaternion = np.array([data.pose.pose.orientation.x, 
