@@ -8,4 +8,4 @@ Run the below commands -
 - conda config --add channels conda-forge
 - conda config --set channel_priority strict
 - conda install tensorboardX
-- conda install hydra
+- conda install hydra-core
