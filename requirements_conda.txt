@@ -1,0 +1,7 @@
+numpy
+torch
+
+wandb
+# hydra
+# tensorboard
+pandas
