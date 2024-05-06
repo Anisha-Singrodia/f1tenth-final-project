@@ -1,16 +1,17 @@
 # @package model
 name: 'mlp'
-state_dim: 5
+state_dim: 9
 action_dim: 2
-history_len: 10
-hidden_dim: 128
+state_out_dim: 5
+history_len: 1
+hidden_dim: 32
 
-lr: 1e-3
+lr: 5e-3
 lr_scheduler: 'StepLR'
 lr_step_size: 10
 lr_gamma: 0.5
 
-batch_size: 64
+batch_size: 128
 num_epochs: 20
 
 pinn: False
