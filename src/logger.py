@@ -7,7 +7,7 @@ import torch
 import torchvision
 from termcolor import colored
 #from torch.utils.tensorboard import SummaryWriter
-from tensorboardX import SummaryWriter
+#from tensorboardX import SummaryWriter
 import wandb
 
 COMMON_TRAIN_FORMAT = [('frame', 'F', 'int'), ('step', 'S', 'int'),
@@ -142,7 +142,17 @@ class Logger(object):
 				exp_group = exp_group[:-7]
 			else:
 				exp_group = group_name
-			self.wandb_writer = wandb.init(project=project_name, config=cfg, group=exp_group, name=exp_name)
+
+			# expand cfg dict, i.e., turn the dict `cfg.model` into cfg.model_name, ...
+			wandb_cfg = {}
+			for k, v in cfg.items():
+				if type(v) == dict:
+					for kk, vv in v.items():
+						wandb_cfg[f'{k}_{kk}'] = vv
+				else:
+					wandb_cfg[k] = v
+
+			self.wandb_writer = wandb.init(project=project_name, config=wandb_cfg, group=exp_group, name=exp_name)
 		else:
 			self.wandb_writer = None
 

@@ -12,6 +12,7 @@ from src.dataset_loader import F1TENTH_Dataset, F1TENTH_DataLoader
 import hydra
 from src.logger import Logger
 import src.utils as utils
+from tqdm import tqdm
 
 
 class Workspace:
@@ -58,11 +59,15 @@ class Workspace:
                                               shuffle=False,
                                               num_workers=self.cfg.num_workers)
 
+        print(f'Train dataset: {len(self.train_dataset)}')
+        print(f'Eval dataset: {len(self.eval_dataset)}')
+
         # model
         if self.cfg.model.name == 'mlp':
             self.model = MLPdynamics(
                                         state_dim=self.cfg.model.state_dim,
                                         act_dim=self.cfg.model.action_dim,
+                                        out_dim=self.cfg.model.state_out_dim,
                                         history_len=self.cfg.model.history_len,
                                         hidden_dim=self.cfg.model.hidden_dim
                                      ).to(self.device)
@@ -72,10 +77,13 @@ class Workspace:
                                                 act_dim=self.cfg.model.action_dim,
                                                 history_len=self.cfg.model.history_len,
                                                 hidden_dim=self.cfg.model.hidden_dim,
+                                                nhead=self.cfg.model.nheads,
                                                 num_layers=self.cfg.model.num_layers
                                              ).to(self.device)
         else:
             raise ValueError(f'Invalid model name: {self.cfg.model.name}')
+
+        print(f'Model: {self.model} has {self.model.parameter_num()} parameters.')
 
         # optimizer
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.cfg.model.lr)
@@ -102,21 +110,48 @@ class Workspace:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        if hasattr(self, 'scheduler'):
-            self.scheduler.step()
+
+        if self._global_step > 30 and loss.item() > 5.0:
+            #import pdb; pdb.set_trace()
+            print('Loss is too high, loss:', loss.item())
+            loss_each = ((next_state - pred_next_state)**2).sum(axis=1)
+            idx = np.argmax(loss_each.cpu().detach().numpy())
+            print('State:', state[idx, -1])
+            print('Action:', action[idx, -1])
+            print('Next State:', next_state[idx])
+            print('Predicted Next State:', pred_next_state[idx])
+
 
         if self._global_step % self.cfg.log_interval == 0:
             self.logger.log('train/loss', loss.item(), self._global_step)
-            self._global_step += 1
+        self._global_step += 1
+
+        return loss.item()
 
     def train(self):
-        for epoch in range(self.cfg.num_epochs):
+        for epoch in tqdm(range(self.cfg.model.num_epochs)):
             for train_batch in self.train_loader:
                 self.model.train()
-                self.train_step(train_batch)
+                loss = self.train_step(train_batch)
+
+            print(f'Epoch: {epoch}, Loss: {loss}')
 
             if epoch % self.cfg.eval_interval == 0:
                 self.evaluate()
+
+            if hasattr(self, 'scheduler') and self.cfg.model.lr_scheduler == 'StepLR':
+                self.scheduler.step()
+                self.logger.log('train/lr', self.scheduler.get_last_lr()[0], self._global_step)
+
+            if epoch % self.cfg.save_checkpoint_interval == 0:
+                self.save_model()
+
+    def save_model(self):
+        save_path = self.work_dir / 'checkpoints'
+        save_path.mkdir(exist_ok=True, parents=True)
+        save_path = save_path / f'{self.cfg.model.name}_model_{self._global_step}.pth'
+        torch.save(self.model, save_path)
+        print(f'Model saved at {save_path}')
 
     def evaluate(self):
         for eval_batch in self.eval_loader:
@@ -132,7 +167,7 @@ class Workspace:
                 self.logger.log('eval/loss', loss.item(), self._global_step)
 
 
-@hydra.main(config_path='cfgs', config_name='config')
+@hydra.main(config_path='cfgs', config_name='config', version_base='1.1')
 def main(cfg):
     #from train_dynamics import Workspace as W
     root_dir = Path.cwd()

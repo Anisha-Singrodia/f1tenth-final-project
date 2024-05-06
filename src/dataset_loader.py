@@ -118,9 +118,9 @@ class F1TENTH_Dataset(torch.utils.data.Dataset):
         ## scale pos and yaw
         # pos scale increases by the index
         pos_scale_cur = np.arange(1, self.history_len+1) * pos_scale
-        yaw_scale_cur = np.arange(1, self.history_len+1) * yaw_scale
+        #yaw_scale_cur = np.arange(1, self.history_len+1) * yaw_scale
         pos_yaw[1:, :2] = pos_yaw[1:, :2] / pos_scale_cur[:, None]
-        pos_yaw[1:, 2] = pos_yaw[1:, 2] / yaw_scale_cur
+        #pos_yaw[1:, 2] = pos_yaw[1:, 2] / yaw_scale_cur
 
         ## scale velocity to cmd
         left_state = data[idx:idx + self.history_len+1][:, 4:]
@@ -131,7 +131,8 @@ class F1TENTH_Dataset(torch.utils.data.Dataset):
 
         state = torch.tensor(df[:-1][:, :self.state_dim], dtype=torch.float32)
         action = torch.tensor(df[:-1][:, self.state_dim:], dtype=torch.float32)
-        next_state = torch.tensor(df[-1][:self.state_dim], dtype=torch.float32)
+        #next_state = torch.tensor(df[-1][:self.state_dim], dtype=torch.float32)
+        next_state = torch.tensor(df[-1][1:6], dtype=torch.float32)
         return state, action, next_state
 
 class F1TENTH_DataLoader(torch.utils.data.DataLoader):
