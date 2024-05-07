@@ -48,11 +48,13 @@ class F1TENTH_Dataset(torch.utils.data.Dataset):
                     data_path_file, 
                     state_dim=9, 
                     act_dim=2, 
-                    history_len=10):        
+                    history_len=10,
+                    normalize=True):        
         self.root_dir = root_dir
         self.history_len = history_len
         self.state_dim = state_dim
         self.act_dim = act_dim
+        self.normalize = normalize
         self.data = self.read_data(os.path.join(root_dir, data_path_file))
 
     def read_data(self, data_path_file):
@@ -67,6 +69,8 @@ class F1TENTH_Dataset(torch.utils.data.Dataset):
                 line = line.strip()
                 line = os.path.join(self.root_dir, line)
                 data[i] = pd.read_csv(line)[columns_to_read]
+                data[i]['yaw'] = (data[i]['yaw'] + np.pi) % (2 * np.pi) - np.pi
+
                 # drop first row
                 data[i] = data[i].drop(data[i].index[0]).to_numpy()
 
@@ -102,6 +106,22 @@ class F1TENTH_Dataset(torch.utils.data.Dataset):
             state: [Batch_size, history_len, state_dim]
             action: [Batch_size, history_len, act_dim]
             next_state: [Batch_size, state_dim] 
+
+
+        the State has the following format:
+                        'delta_time',
+                        'pose_position_x',
+                        'pose_position_y',
+                        'yaw',
+                        'body_vx',
+                        'body_vy',
+                        'yaw_rate',
+                        'linear_acceleration_x',
+                        'linear_acceleration_y',
+
+        the action has the following format:
+                        'cmd_st_angle',
+                        'cmd_speed'
         """
         file_idx = np.searchsorted(self.data_cum_idx_map, _idx, side='right') - 1
         idx = _idx - self.data_cum_idx_map[file_idx]
@@ -115,16 +135,18 @@ class F1TENTH_Dataset(torch.utils.data.Dataset):
         pos_yaw = data[idx:idx + self.history_len+1][:, 1:4]
         pos_yaw = pos_yaw - pos_yaw[0]
 
-        ## scale pos and yaw
-        # pos scale increases by the index
-        pos_scale_cur = np.arange(1, self.history_len+1) * pos_scale
-        #yaw_scale_cur = np.arange(1, self.history_len+1) * yaw_scale
-        pos_yaw[1:, :2] = pos_yaw[1:, :2] / pos_scale_cur[:, None]
-        #pos_yaw[1:, 2] = pos_yaw[1:, 2] / yaw_scale_cur
 
         ## scale velocity to cmd
         left_state = data[idx:idx + self.history_len+1][:, 4:]
-        left_state = (left_state - state_means) / state_stds
+        if self.normalize:
+            ## scale pos and yaw
+            # pos scale increases by the index
+            pos_scale_cur = np.arange(1, self.history_len+1) * pos_scale
+            #yaw_scale_cur = np.arange(1, self.history_len+1) * yaw_scale
+            pos_yaw[1:, :2] = pos_yaw[1:, :2] / pos_scale_cur[:, None]
+            #pos_yaw[1:, 2] = pos_yaw[1:, 2] / yaw_scale_cur
+
+            left_state = (left_state - state_means) / state_stds
 
         df = np.concatenate([times, pos_yaw, left_state], axis=1)
 

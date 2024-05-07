@@ -9,8 +9,9 @@ The model takes input of the states and actions of the car in the past T time st
 
 class MLPdynamics(torch.nn.Module):
     def __init__(self, 
-                 state_dim=5, 
+                 state_dim=9, 
                  act_dim=2,
+                 out_dim=5,
                  history_len=10,
                  hidden_dim=256, 
                  ):
@@ -22,10 +23,21 @@ class MLPdynamics(torch.nn.Module):
         input_dim = (state_dim + act_dim)* history_len
         self.net = torch.nn.Sequential(
             torch.nn.Linear(input_dim, hidden_dim),
-            torch.nn.ReLU(),
+            torch.nn.Mish(),
+
             torch.nn.Linear(hidden_dim, hidden_dim),
-            torch.nn.ReLU(),
-            torch.nn.Linear(hidden_dim, state_dim)
+            torch.nn.Mish(),
+
+            torch.nn.Linear(hidden_dim, hidden_dim),
+            torch.nn.Mish(),
+
+            torch.nn.Linear(hidden_dim, hidden_dim),
+            torch.nn.Mish(),
+
+            torch.nn.Linear(hidden_dim, hidden_dim),
+            torch.nn.Mish(),
+
+            torch.nn.Linear(hidden_dim, out_dim)
         )
     
     def forward(self, state, action):

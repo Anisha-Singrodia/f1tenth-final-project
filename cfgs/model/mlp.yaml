@@ -3,12 +3,12 @@ name: 'mlp'
 state_dim: 9
 action_dim: 2
 state_out_dim: 5
-history_len: 1
-hidden_dim: 32
+history_len: 4
+hidden_dim: 64
 
-lr: 5e-3
+lr: 1e-3
 lr_scheduler: 'StepLR'
-lr_step_size: 10
+lr_step_size: 8
 lr_gamma: 0.5
 
 batch_size: 128

@@ -9,6 +9,7 @@ from termcolor import colored
 #from torch.utils.tensorboard import SummaryWriter
 #from tensorboardX import SummaryWriter
 import wandb
+import omegaconf
 
 COMMON_TRAIN_FORMAT = [('frame', 'F', 'int'), ('step', 'S', 'int'),
 					   ('episode', 'E', 'int'), ('episode_length', 'L', 'int'),
@@ -146,7 +147,7 @@ class Logger(object):
 			# expand cfg dict, i.e., turn the dict `cfg.model` into cfg.model_name, ...
 			wandb_cfg = {}
 			for k, v in cfg.items():
-				if type(v) == dict:
+				if type(v) == omegaconf.dictconfig.DictConfig:
 					for kk, vv in v.items():
 						wandb_cfg[f'{k}_{kk}'] = vv
 				else:
