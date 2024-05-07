@@ -14,6 +14,14 @@ from src.logger import Logger
 import src.utils as utils
 from tqdm import tqdm
 
+def seperate_loss(pred_next_state, next_state):
+    #loss = (pred_next_state - next_state) ** 2
+    loss_1 = (pred_next_state[..., :2] - next_state[..., :2]) ** 2
+    loss_2 = torch.sin(pred_next_state[..., 2:3] - next_state[..., 2:3]) ** 2
+    loss_3 = (pred_next_state[..., 3:] - next_state[..., 3:]) ** 2
+
+    return torch.cat([loss_1, loss_2, loss_3], axis=1).mean(axis=0)
+    #return loss.mean(axis=0)
 
 class Workspace:
     def __init__(self, cfg):
@@ -44,12 +52,14 @@ class Workspace:
                                              self.cfg.train_data_path,
                                              self.cfg.model.state_dim,
                                             self.cfg.model.action_dim,
-                                             history_len=self.cfg.model.history_len)
+                                             history_len=self.cfg.model.history_len,
+                                             normalize=False)
         self.eval_dataset = F1TENTH_Dataset(self.cfg.rootdir, 
                                             self.cfg.test_data_path,
                                              self.cfg.model.state_dim,
                                             self.cfg.model.action_dim,
-                                            history_len=self.cfg.model.history_len)
+                                            history_len=self.cfg.model.history_len,
+                                             normalize=False)
         self.train_loader = F1TENTH_DataLoader(self.train_dataset, 
                                                batch_size=self.cfg.model.batch_size, 
                                                shuffle=True, 
@@ -100,7 +110,9 @@ class Workspace:
         next_state = next_state.to(self.device)
 
         pred_next_state = self.model(state, action)
-        loss = nn.MSELoss()(pred_next_state, next_state)
+        #loss = nn.MSELoss()(pred_next_state, next_state)
+        losses = seperate_loss(pred_next_state, next_state)
+        loss = losses.mean()
 
         if self.cfg.model.pinn:
             physics_next_state = utils.single_track_dynamics(state[:, -1, :], action)
@@ -123,7 +135,9 @@ class Workspace:
 
 
         if self._global_step % self.cfg.log_interval == 0:
-            self.logger.log('train/loss', loss.item(), self._global_step)
+            for i, name in enumerate(['px', 'py', 'yaw', 'vx', 'vy']):
+                self.logger.log(f'train/loss_{name}', losses[i].item(), self._global_step)
+            self.logger.log('train/total_loss', loss.item(), self._global_step)
         self._global_step += 1
 
         return loss.item()
@@ -154,6 +168,7 @@ class Workspace:
         print(f'Model saved at {save_path}')
 
     def evaluate(self):
+        losses_list = []
         for eval_batch in self.eval_loader:
             self.model.eval()
             state, action, next_state = eval_batch
@@ -163,8 +178,21 @@ class Workspace:
 
             with torch.no_grad():
                 pred_next_state = self.model(state, action)
-                loss = nn.MSELoss()(pred_next_state, next_state)
-                self.logger.log('eval/loss', loss.item(), self._global_step)
+                #loss = nn.MSELoss()(pred_next_state, next_state)
+                #losses_list.append(loss.item())
+                losses = seperate_loss(pred_next_state, next_state)
+                losses_list.append(losses.detach().cpu().numpy())
+
+        #self.logger.log('eval/loss', 
+        #                np.mean(losses),
+        #                self._global_step)
+        for i, name in enumerate(['px', 'py', 'yaw', 'vx', 'vy']):
+            self.logger.log(f'eval/loss_{name}', 
+                            np.mean([loss[i] for loss in losses_list]),
+                            self._global_step)
+        self.logger.log('eval/total_loss',
+                        np.mean(losses_list),
+                        self._global_step)
 
 
 @hydra.main(config_path='cfgs', config_name='config', version_base='1.1')
