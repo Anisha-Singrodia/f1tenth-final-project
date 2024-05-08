@@ -1,0 +1,3 @@
+input_file: /home/deeksha/Desktop/f1tenth-final-project-main/data/mergedf/final_2.csv
+output_file: /home/deeksha/Desktop/f1tenth-final-project-main/data/mergedf/final_2_augmented_5.csv
+interval: 5
